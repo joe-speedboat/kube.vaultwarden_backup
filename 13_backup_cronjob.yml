@@ -5,6 +5,7 @@ metadata:
   namespace: __NAMESPACE__
 spec:
   schedule: "0 2 * * *" # Run daily at 2 AM
+  concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: __BACKUP_KEEP_DAYS__
   failedJobsHistoryLimit: __BACKUP_KEEP_DAYS__
   jobTemplate:
@@ -38,6 +39,7 @@ spec:
               - |
                 echo "DEBUG" && id && umask &&
                 DATE=$(date +'%Y-%m-%d_%H-%M') &&
+                kubectl get all -o yaml > /data/backup-dst/__NAMESPACE__-${DATE}.tar.gz.yml
                 echo "SCALE DOWN" &&
                 sleep 5 && kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=0 -n __NAMESPACE__ &&
                 echo "BACKUP VOLUMES" &&

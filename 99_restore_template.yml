@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: restore-job-template
+  namespace: __NAMESPACE__
+spec:
+  schedule: "0 0 31 2 *" # This would never match
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 10
+  failedJobsHistoryLimit: 10
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: backup-serviceaccount
+          containers:
+          - name: restore
+            image: bitnami/kubectl:latest
+            command:
+              - /bin/sh
+              - -c
+              - |
+                echo "DEBUG: Starting restore process" &&
+                
+                # Scale down the deployments
+                echo "SCALE DOWN: Scaling down the deployments" &&
+                kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=0 -n __NAMESPACE__ &&
+                
+                # Verify the restore file exists
+                echo "VERIFY: Checking if restore file exists" &&
+                if [ ! -f /data/backup-dst/restore.tar.gz ]; then
+                  echo "ERROR: Restore file /data/backup-dst/restore.tar.gz not found!" && exit 1;
+                fi &&
+                
+                # Delete application and database volume data
+                echo "DELETE DATA: Clearing application and database volumes" &&
+                rm -rf /data/app-src/* /data/db-src/* &&
+                
+                # Restore data from the backup
+                echo "RESTORE: Extracting restore file" &&
+                tar xvfz /data/backup-dst/restore.tar.gz -C /data/ &&
+                
+                # Verify restored data
+                echo "VERIFY: Post-restore content of application and database volumes" &&
+                ls -l /data/app-src /data/db-src &&
+                
+                # Scale up the deployments
+                echo "SCALE UP: Scaling up the deployments" &&
+                kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=1 -n __NAMESPACE__
+            volumeMounts:
+            - name: backup-pvc
+              mountPath: /data/backup-dst
+            - name: app-pvc
+              mountPath: /data/app-src
+            - name: db-pvc
+              mountPath: /data/db-src
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              allowPrivilegeEscalation: true
+          restartPolicy: Never
+          volumes:
+          - name: app-pvc
+            persistentVolumeClaim:
+              claimName: __APP_PVC__
+          - name: db-pvc
+            persistentVolumeClaim:
+              claimName: __DB_PVC__
+          - name: backup-pvc
+            persistentVolumeClaim:
+              claimName: __BACKUP_PVC__
+
