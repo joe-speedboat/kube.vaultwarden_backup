@@ -23,15 +23,15 @@ spec:
               - |
                 echo "DEBUG: Starting restore process" &&
                 
-                # Scale down the deployments
-                echo "SCALE DOWN: Scaling down the deployments" &&
-                kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=0 -n __NAMESPACE__ &&
-                
                 # Verify the restore file exists
                 echo "VERIFY: Checking if restore file exists" &&
                 if [ ! -f /data/backup-dst/restore.tar.gz ]; then
                   echo "ERROR: Restore file /data/backup-dst/restore.tar.gz not found!" && exit 1;
                 fi &&
+                
+                # Scale down the deployments
+                echo "SCALE DOWN: Scaling down the deployments" &&
+                kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=0 -n __NAMESPACE__ &&
                 
                 # Delete application and database volume data
                 echo "DELETE DATA: Clearing application and database volumes" &&
