@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: __NAMESPACE__-backup
+  namespace: __NAMESPACE__
+spec:
+  schedule: "0 2 * * *" # Run daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: backup-serviceaccount
+          initContainers:
+          - name: prepare-backup
+            image: busybox
+            command:
+              - /bin/sh
+              - -c
+              - |
+                echo "DEBUG" && id && umask &&
+                echo "CMD" &&
+                chmod -Rv 770 /data/backup-dst
+            volumeMounts:
+            - name: __BACKUP_PVC__
+              mountPath: /data/backup-dst
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              allowPrivilegeEscalation: true
+          containers:
+          - name: backup
+            image: bitnami/kubectl:latest
+            command:
+              - /bin/sh
+              - -c
+              - |
+                echo "DEBUG" && id && umask &&
+                DATE=$(date +'%Y-%m-%d_%H-%M') &&
+                echo "SCALE DOWN" &&
+                sleep 5 && kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=0 -n __NAMESPACE__ &&
+                echo "BACKUP VOLUMES" &&
+                sleep 30 && tar cvfz /data/backup-dst/__NAMESPACE__-${DATE}.tar.gz /data/*-src >/data/backup-dst/__NAMESPACE__-${DATE}.tar.gz.log 2>&1 ; echo RC=$RC &&
+                echo "TAIL BACKUP LOGS" &&
+                tail /data/backup-dst/__NAMESPACE__-${DATE}.tar.gz.log &&
+                echo "LIST BACKUPS" &&
+                ls -l /data/backup-dst/ &&
+                echo "ROTATE BACKUPS" &&
+                find /data/backup-dst -type f -name '*.tar.gz*' -mtime +__BACKUP_KEEP_DAYS__ -exec rm -v {} + &&
+                echo "SCALE UP" &&
+                sleep 5 && kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=1 -n __NAMESPACE__
+            volumeMounts:
+            - name: __BACKUP_PVC__
+              mountPath: /data/backup-dst
+            - name: __APP_PVC__
+              mountPath: /data/app-src
+            - name: __DB_PVC__
+              mountPath: /data/db-src
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              allowPrivilegeEscalation: true
+          restartPolicy: Never
+          volumes:
+          - name: __APP_PVC__
+            persistentVolumeClaim:
+              claimName: __APP_PVC__
+          - name: __DB_PVC__
+            persistentVolumeClaim:
+              claimName: __DB_PVC__
+          - name: __BACKUP_PVC__
+            persistentVolumeClaim:
+              claimName: __BACKUP_PVC__
+
