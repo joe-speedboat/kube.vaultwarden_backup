@@ -41,7 +41,7 @@ spec:
                 echo "SCALE DOWN" &&
                 sleep 5 && kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=0 -n __NAMESPACE__ &&
                 echo "BACKUP VOLUMES" &&
-                sleep 30 && tar cvfz /data/backup-dst/__NAMESPACE__-${DATE}.tar.gz /data/*-src >/data/backup-dst/__NAMESPACE__-${DATE}.tar.gz.log 2>&1 ; echo RC=$RC &&
+                sleep 30 && tar cvfz /data/backup-dst/__NAMESPACE__-${DATE}.tar.gz /data/*-src >/data/backup-dst/__NAMESPACE__-${DATE}.tar.gz.log 2>&1 ; echo RC=$? &&
                 echo "TAIL BACKUP LOGS" &&
                 tail /data/backup-dst/__NAMESPACE__-${DATE}.tar.gz.log &&
                 echo "LIST BACKUPS" &&
