@@ -5,6 +5,7 @@ metadata:
   namespace: __NAMESPACE__
 spec:
   schedule: "0 2 * * *" # Run daily at 2 AM
+  successfulJobsHistoryLimit: __BACKUP_KEEP_DAYS__
   jobTemplate:
     spec:
       template:
