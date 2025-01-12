@@ -11,6 +11,7 @@ spec:
   failedJobsHistoryLimit: 10
   jobTemplate:
     spec:
+      backoffLimit: 0 # Prevent retries on failure
       template:
         spec:
           serviceAccountName: backup-serviceaccount
