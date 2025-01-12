@@ -37,21 +37,26 @@ spec:
               - /bin/sh
               - -c
               - |
-                echo "DEBUG" && id && umask &&
-                DATE=$(date +'%Y-%m-%d_%H-%M') &&
-                kubectl get all -o yaml > /data/backup-dst/__NAMESPACE__-${DATE}.tar.gz.yml
-                echo "SCALE DOWN" &&
-                sleep 5 && kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=0 -n __NAMESPACE__ &&
-                echo "BACKUP VOLUMES" &&
-                sleep 30 && tar cvfz /data/backup-dst/__NAMESPACE__-${DATE}.tar.gz /data/*-src >/data/backup-dst/__NAMESPACE__-${DATE}.tar.gz.log 2>&1 ; echo RC=$? &&
-                echo "TAIL BACKUP LOGS" &&
-                tail /data/backup-dst/__NAMESPACE__-${DATE}.tar.gz.log &&
-                echo "LIST BACKUPS" &&
-                ls -l /data/backup-dst/ &&
-                echo "ROTATE BACKUPS" &&
-                find /data/backup-dst -type f -name '*.tar.gz*' -mtime +__BACKUP_KEEP_DAYS__ -exec rm -v {} + &&
-                echo "SCALE UP" &&
-                sleep 5 && kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=1 -n __NAMESPACE__
+                echo "DEBUG" && id && umask | tee -a $BF.log
+                DATE=$(date +'%Y-%m-%d_%H-%M')
+                BF=/data/backup-dst/__NAMESPACE__-${DATE}.tar.gz
+
+                echo "SCALE DOWN" | tee -a $BF.log
+                sleep 5 && kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=0 -n __NAMESPACE__ | tee -a $BF.log
+
+                echo "BACKUP VOLUMES" | tee -a $BF.log
+                sleep 30 && tar cvfz $BF /data/*-src >$BF.log 2>&1 ; echo RC=$? | tee -a $BF.log
+                
+                echo "TAIL BACKUP LOGS"
+                tail /data/backup-dst/__NAMESPACE__-${DATE}.tar.gz.log
+                
+                echo "LIST BACKUPS" | tee -a $BF.log
+                ls -l /data/backup-dst/ | tee -a $BF.log
+
+                echo "ROTATE BACKUPS" | tee -a $BF.log
+                find /data/backup-dst -type f -name '*.tar.gz*' -mtime +__BACKUP_KEEP_DAYS__ -exec rm -v {} + |  &&
+                echo "SCALE UP" | tee -a $BF.log
+                sleep 5 && kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=1 -n __NAMESPACE__ | tee -a $BF.log
             volumeMounts:
             - name: __BACKUP_PVC__
               mountPath: /data/backup-dst
