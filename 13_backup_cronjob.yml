@@ -54,7 +54,7 @@ spec:
                 ls -l /data/backup-dst/ | tee -a $BF.log
 
                 echo "ROTATE BACKUPS" | tee -a $BF.log
-                find /data/backup-dst -type f -name '*.tar.gz*' -mtime +__BACKUP_KEEP_DAYS__ -exec rm -v {} + |  &&
+                find /data/backup-dst -type f -name '*.tar.gz*' -mtime +__BACKUP_KEEP_DAYS__ -exec rm -v {} + | tee -a $BF.log
                 echo "SCALE UP" | tee -a $BF.log
                 sleep 5 && kubectl scale __APP_RESSOURCE__ __DB_RESSOURCE__ --replicas=1 -n __NAMESPACE__ | tee -a $BF.log
             volumeMounts:
